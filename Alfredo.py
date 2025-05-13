@@ -4,6 +4,9 @@ from datetime import datetime, timedelta
 from departamentos import departamentos
 from colaboradores_por_departamento import colaboradores_por_departamento
 
+import json
+import os
+
 st.set_page_config(
     page_title="Alfredo Augustinus",
     page_icon="icon.png",
@@ -36,6 +39,41 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+# Inicializa o estado da sessão para eventos se não existir
+if 'events' not in st.session_state:
+    st.session_state.events = []
+
+# Função para carregar eventos do arquivo
+def carregar_eventos():
+    try:
+        if os.path.exists('eventos.json'):
+            with open('eventos.json', 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        st.error(f"Erro ao carregar eventos: {e}")
+    return []
+
+# Função para salvar eventos no arquivo
+def salvar_eventos_arquivo():
+    try:
+        with open('eventos.json', 'w') as f:
+            json.dump(st.session_state.events, f)
+    except Exception as e:
+        st.error(f"Erro ao salvar eventos: {e}")
+
+# Inicializa o estado da sessão com eventos do arquivo
+if 'events' not in st.session_state:
+    st.session_state.events = carregar_eventos()
+
+# Modifique a função salvar_evento para incluir o salvamento em arquivo
+def salvar_evento(evento):
+    if 'events' not in st.session_state:
+        st.session_state.events = []
+    st.session_state.events.append(evento)
+    salvar_eventos_arquivo()
+    # Força a persistência do estado
+    st.session_state.sync()
 
 # Sidebar para agendamento
 with st.sidebar:
@@ -76,17 +114,16 @@ with st.sidebar:
             
             # Verifica se já existe reunião agendada para o mesmo horário
             conflito = False
-            if 'events' in st.session_state:
-                for evento in st.session_state.events:
-                    evento_inicio = datetime.fromisoformat(evento['start'].replace('Z', '+00:00'))
-                    evento_fim = datetime.fromisoformat(evento['end'].replace('Z', '+00:00'))
-                    
-                    if (inicio_dt >= evento_inicio and inicio_dt < evento_fim) or \
-                       (fim_dt > evento_inicio and fim_dt <= evento_fim) or \
-                       (inicio_dt <= evento_inicio and fim_dt >= evento_fim):
-                        conflito = True
-                        st.error(f"Já existe uma reunião agendada para este horário: {evento['title']}")
-                        break
+            for evento in st.session_state.events:
+                evento_inicio = datetime.fromisoformat(evento['start'].replace('Z', '+00:00'))
+                evento_fim = datetime.fromisoformat(evento['end'].replace('Z', '+00:00'))
+                
+                if (inicio_dt >= evento_inicio and inicio_dt < evento_fim) or \
+                   (fim_dt > evento_inicio and fim_dt <= evento_fim) or \
+                   (inicio_dt <= evento_inicio and fim_dt >= evento_fim):
+                    conflito = True
+                    st.error(f"Já existe uma reunião agendada para este horário: {evento['title']}")
+                    break
             
             if not conflito:
                 # Adiciona novo evento
@@ -97,10 +134,7 @@ with st.sidebar:
                     "description": f"Departamento: {departamento}\nParticipantes: {', '.join(participantes)}\n\n{descricao}"
                 }
                 
-                if 'events' not in st.session_state:
-                    st.session_state.events = []
-                
-                st.session_state.events.append(novo_evento)
+                salvar_evento(novo_evento)
                 st.success("Reunião agendada com sucesso!")
                 st.rerun()
 
