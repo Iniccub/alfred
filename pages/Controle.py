@@ -92,7 +92,7 @@ for dept in departamentos:
         if not tem_reuniao:
             if st.button("Agendar Reunião", key=f"btn_{dept}"):
                 st.session_state.departamento_selecionado = dept
-                st.switch_page("Alfred.py")
+                st.switch_page("Alfredo.py")
 
 
 # Configuração de tema e cores
