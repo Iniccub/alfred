@@ -235,15 +235,14 @@ if events:
                 
                 st.write(evento['description'])
 
-    # Na função de cancelar reunião
-    if st.button("Cancelar Reunião", key=f"cancel_{idx}"):
-        events.pop(idx)
-        salvar_eventos_arquivo()  # Adicionar esta linha
-        st.success("Reunião cancelada com sucesso!")
-        st.rerun()
-    
-    # Na função de salvar alterações
-    if st.button("Salvar Alterações"):
+    # Remove these duplicate button sections
+    # if st.button("Cancelar Reunião", key=f"cancel_{idx}"):  # This was causing the error
+    # if st.button("Salvar Alterações"):  # This should be in the editing modal
+
+    # Modal de edição (if needed)
+    if 'editing_event' in st.session_state:
+        st.sidebar.header("Editar Reunião")
+        # Add your editing form here
         # Atualiza o evento
         inicio_dt = datetime.combine(nova_data, nova_hora)
         fim_dt = inicio_dt + timedelta(hours=nova_duracao)

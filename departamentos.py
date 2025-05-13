@@ -13,7 +13,7 @@ departamentos = [
     'Relacionamento com o Cliente',
     'Aldeia que Educa',
     'Estratégia e Novos Negócios',
-    'Sustenabilidade',
+    'Sustentabilidade',
     'Assistência Social',
     'Departamento de Pessoal',
     'Internacionalização',
