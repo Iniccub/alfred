@@ -3,13 +3,35 @@ from streamlit_calendar import calendar
 from datetime import datetime, timedelta
 from departamentos import departamentos
 from colaboradores_por_departamento import colaboradores_por_departamento
+import banco_eventos
 
 import json
 import os
 
-import pymongo
-from pymongo import MongoClient
+# Função para carregar eventos
+def carregar_eventos():
+    try:
+        return banco_eventos.eventos_db
+    except Exception as e:
+        st.error(f"Erro ao carregar eventos: {e}")
+    return []
 
+# Função para salvar eventos
+def salvar_eventos_arquivo():
+    try:
+        with open('banco_eventos.py', 'w', encoding='utf-8') as f:
+            f.write(f'eventos_db = {repr(st.session_state.events)}')
+    except Exception as e:
+        st.error(f"Erro ao salvar eventos: {e}")
+
+# Função para salvar evento individual
+def salvar_evento(evento):
+    if 'events' not in st.session_state:
+        st.session_state.events = []
+    st.session_state.events.append(evento)
+    salvar_eventos_arquivo()
+
+# Configuração da página
 st.set_page_config(
     page_title="Alfredo Augustinus",
     page_icon="icon.png",
@@ -45,34 +67,26 @@ st.markdown(
 
 # Inicializa o estado da sessão para eventos se não existir
 if 'events' not in st.session_state:
-    st.session_state.events = []
-
-# Função para carregar eventos do arquivo
-# No início do arquivo, após os imports
-# Substitua a URL pela sua string de conexão do MongoDB Atlas
-MONGODB_URI = st.secrets["mongodb"]["uri"]
-client = MongoClient(MONGODB_URI)
-db = client.agenda_reunioes
-collection = db.eventos
+    st.session_state.events = carregar_eventos()
 
 # Substitua a função carregar_eventos
-def carregar_eventos():
-    try:
-        eventos = list(collection.find({}, {'_id': 0}))
-        return eventos
-    except Exception as e:
-        st.error(f"Erro ao carregar eventos: {e}")
-    return []
+# def carregar_eventos():
+#     try:
+#         eventos = list(collection.find({}, {'_id': 0}))
+#         return eventos
+#     except Exception as e:
+#         st.error(f"Erro ao carregar eventos: {e}")
+#     return []
 
 # Substitua a função salvar_eventos_arquivo
-def salvar_eventos_arquivo():
-    try:
-        # Limpa a coleção e insere todos os eventos
-        collection.delete_many({})
-        if st.session_state.events:
-            collection.insert_many(st.session_state.events)
-    except Exception as e:
-        st.error(f"Erro ao salvar eventos: {e}")
+# def salvar_eventos_arquivo():
+#     try:
+#         # Limpa a coleção e insere todos os eventos
+#         collection.delete_many({})
+#         if st.session_state.events:
+#             collection.insert_many(st.session_state.events)
+#     except Exception as e:
+#         st.error(f"Erro ao salvar eventos: {e}")
 
 # Inicializa o estado da sessão com eventos do arquivo
 if 'events' not in st.session_state:
@@ -196,76 +210,56 @@ if events:
         if datetime.fromisoformat(evento['start'].replace('Z', '+00:00')).month == mes_numero
     ]
     
+    # Na seção de exibição de eventos, ajuste os botões:
     if eventos_filtrados:
         for idx, evento in eventos_filtrados:
             with st.expander(f"{evento['title']} - {evento['start'][:10]}"):
-                if st.button("Editar", key=f"edit_{idx}"):
-                    st.session_state.editing_event = idx
-                    st.session_state.edit_title = evento['title']
-                    st.session_state.edit_start = datetime.fromisoformat(evento['start'])
-                    st.session_state.edit_end = datetime.fromisoformat(evento['end'])
-                    st.session_state.edit_description = evento['description'].split('\n\n')[1] if '\n\n' in evento['description'] else ''
-                    st.session_state.edit_dept = evento['description'].split('\n')[0].replace('Departamento: ', '')
-                    st.session_state.edit_participants = evento['description'].split('\n')[1].replace('Participantes: ', '')
-                    st.rerun()
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Editar", key=f"edit_button_{idx}"):  # Chave única para botão de editar
+                        st.session_state.editing_event = idx
+                        st.session_state.edit_title = evento['title']
+                        st.session_state.edit_start = datetime.fromisoformat(evento['start'])
+                        st.session_state.edit_end = datetime.fromisoformat(evento['end'])
+                        st.session_state.edit_description = evento['description'].split('\n\n')[1] if '\n\n' in evento['description'] else ''
+                        st.session_state.edit_dept = evento['description'].split('\n')[0].replace('Departamento: ', '')
+                        st.session_state.edit_participants = evento['description'].split('\n')[1].replace('Participantes: ', '')
+                        st.rerun()
                 
-                if st.button("Cancelar Reunião", key=f"cancel_{idx}"):
-                    events.pop(idx)
-                    st.success("Reunião cancelada com sucesso!")
-                    st.rerun()
+                with col2:
+                    if st.button("Cancelar Reunião", key=f"cancel_button_{idx}"):  # Chave única para botão de cancelar
+                        events.pop(idx)
+                        salvar_eventos_arquivo()
+                        st.success("Reunião cancelada com sucesso!")
+                        st.rerun()
                 
                 st.write(evento['description'])
-    else:
-        st.info(f"Não há reuniões agendadas para {mes_selecionado}.")
 
-# Modal de edição
-if 'editing_event' in st.session_state:
-    with st.sidebar:
-        st.header("Editar Reunião")
+    # Na função de cancelar reunião
+    if st.button("Cancelar Reunião", key=f"cancel_{idx}"):
+        events.pop(idx)
+        salvar_eventos_arquivo()  # Adicionar esta linha
+        st.success("Reunião cancelada com sucesso!")
+        st.rerun()
+    
+    # Na função de salvar alterações
+    if st.button("Salvar Alterações"):
+        # Atualiza o evento
+        inicio_dt = datetime.combine(nova_data, nova_hora)
+        fim_dt = inicio_dt + timedelta(hours=nova_duracao)
         
-        # Campos de edição
-        novo_titulo = st.text_input("Título", value=st.session_state.edit_title, key="edit_title_input")
-        nova_data = st.date_input("Data", value=st.session_state.edit_start.date(), key="edit_date_input")
-        nova_hora = st.time_input("Hora", value=st.session_state.edit_start.time(), key="edit_time_input")
-        nova_duracao = st.number_input(
-            "Duração (horas)", 
-            min_value=0.5, 
-            max_value=8.0, 
-            value=float((st.session_state.edit_end - st.session_state.edit_start).total_seconds() / 3600),
-            step=0.5,
-            key="edit_duration_input"
-        )
+        evento_atualizado = {
+            "title": novo_titulo,
+            "start": inicio_dt.isoformat(),
+            "end": fim_dt.isoformat(),
+            "description": f"Departamento: {novo_dept}\nParticipantes: {novos_participantes}\n\n{nova_descricao}"
+        }
         
-        # Departamento e participantes
-        novo_dept = st.selectbox("Departamento", departamentos, 
-                               index=departamentos.index(st.session_state.edit_dept),
-                               key="edit_dept_input")
-        novos_participantes = st.text_input("Participantes", 
-                                          value=st.session_state.edit_participants,
-                                          key="edit_participants_input")
-        nova_descricao = st.text_area("Descrição", 
-                                    value=st.session_state.edit_description,
-                                    key="edit_description_input")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Salvar Alterações"):
-                # Atualiza o evento
-                inicio_dt = datetime.combine(nova_data, nova_hora)
-                fim_dt = inicio_dt + timedelta(hours=nova_duracao)
-                
-                evento_atualizado = {
-                    "title": novo_titulo,
-                    "start": inicio_dt.isoformat(),
-                    "end": fim_dt.isoformat(),
-                    "description": f"Departamento: {novo_dept}\nParticipantes: {novos_participantes}\n\n{nova_descricao}"
-                }
-                
-                st.session_state.events[st.session_state.editing_event] = evento_atualizado
-                del st.session_state.editing_event
-                st.success("Reunião atualizada com sucesso!")
-                st.rerun()
-        
+        st.session_state.events[st.session_state.editing_event] = evento_atualizado
+        salvar_eventos_arquivo()  # Adicionar esta linha
+        del st.session_state.editing_event
+        st.success("Reunião atualizada com sucesso!")
+        st.rerun()
         with col2:
             if st.button("Cancelar Edição"):
                 del st.session_state.editing_event
