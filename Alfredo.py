@@ -7,6 +7,9 @@ from colaboradores_por_departamento import colaboradores_por_departamento
 import json
 import os
 
+import pymongo
+from pymongo import MongoClient
+
 st.set_page_config(
     page_title="Alfredo Augustinus",
     page_icon="icon.png",
@@ -45,20 +48,29 @@ if 'events' not in st.session_state:
     st.session_state.events = []
 
 # Função para carregar eventos do arquivo
+# No início do arquivo, após os imports
+# Substitua a URL pela sua string de conexão do MongoDB Atlas
+MONGODB_URI = st.secrets["mongodb"]["uri"]
+client = MongoClient(MONGODB_URI)
+db = client.agenda_reunioes
+collection = db.eventos
+
+# Substitua a função carregar_eventos
 def carregar_eventos():
     try:
-        if os.path.exists('eventos.json'):
-            with open('eventos.json', 'r') as f:
-                return json.load(f)
+        eventos = list(collection.find({}, {'_id': 0}))
+        return eventos
     except Exception as e:
         st.error(f"Erro ao carregar eventos: {e}")
     return []
 
-# Função para salvar eventos no arquivo
+# Substitua a função salvar_eventos_arquivo
 def salvar_eventos_arquivo():
     try:
-        with open('eventos.json', 'w') as f:
-            json.dump(st.session_state.events, f)
+        # Limpa a coleção e insere todos os eventos
+        collection.delete_many({})
+        if st.session_state.events:
+            collection.insert_many(st.session_state.events)
     except Exception as e:
         st.error(f"Erro ao salvar eventos: {e}")
 
