@@ -72,8 +72,7 @@ def salvar_evento(evento):
         st.session_state.events = []
     st.session_state.events.append(evento)
     salvar_eventos_arquivo()
-    # Força a persistência do estado
-    st.session_state.sync()
+    # Removida a linha st.session_state.sync()
 
 # Sidebar para agendamento
 with st.sidebar:
