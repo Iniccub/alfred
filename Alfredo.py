@@ -131,7 +131,7 @@ with st.sidebar:
     )
     
     # Data e hora
-    data = st.date_input("Data da Reunião")
+    data = st.date_input("Data da Reunião", min_value=datetime.now().date())
     hora_inicio = st.time_input("Hora de Início")
     duracao = st.number_input("Duração (horas)", min_value=0.5, max_value=8.0, value=1.0, step=0.5)
     
@@ -143,6 +143,8 @@ with st.sidebar:
     if st.button("Agendar Reunião"):
         if not titulo or not participantes:
             st.error("Por favor, preencha o título e selecione pelo menos um participante.")
+        elif hora_inicio.hour < 8 or (hora_inicio.hour + int(duracao)) > 18:
+            st.error("Por favor, agende reuniões apenas em horário comercial (8h às 18h).")
         else:
             # Calcula hora de término
             inicio_dt = datetime.combine(data, hora_inicio)
@@ -158,7 +160,9 @@ with st.sidebar:
                    (fim_dt > evento_inicio and fim_dt <= evento_fim) or \
                    (inicio_dt <= evento_inicio and fim_dt >= evento_fim):
                     conflito = True
-                    st.error(f"Já existe uma reunião agendada para este horário: {evento['title']}")
+                    st.error(f"""Conflito de horário detectado:
+                             \nReunião: {evento['title']}
+                             \nHorário: {evento_inicio.strftime('%H:%M')} - {evento_fim.strftime('%H:%M')}""")
                     break
             
             if not conflito:
@@ -184,12 +188,68 @@ calendar_options = {
     },
     "editable": True,
     "selectable": True,
-    "locale": "pt-br"
+    "locale": "pt-br",
+    "eventDisplay": "block",
+    "displayEventTime": True,
+    "eventTimeFormat": {
+        "hour": "2-digit",
+        "minute": "2-digit",
+        "hour12": False
+    },
+    "businessHours": {
+        "daysOfWeek": [1, 2, 3, 4, 5],
+        "startTime": "08:00",
+        "endTime": "18:00"
+    },
+    "slotMinTime": "08:00:00",
+    "slotMaxTime": "18:00:00",
+    "firstDay": 0,
+    "weekends": True,
+    "dayMaxEvents": True
 }
+
+# Adicione estilos CSS personalizados para o calendário
+st.markdown("""
+    <style>
+        .fc-event {
+            border: none !important;
+            background-color: #4D268C !important;
+            color: white !important;
+            padding: 3px !important;
+            border-radius: 3px !important;
+        }
+        .fc-event:hover {
+            background-color: #5D369C !important;
+        }
+        .fc-toolbar-title {
+            color: #4D268C !important;
+        }
+        .fc-button-primary {
+            background-color: #4D268C !important;
+            border-color: #4D268C !important;
+        }
+        .fc-button-primary:hover {
+            background-color: #5D369C !important;
+            border-color: #5D369C !important;
+        }
+        .fc-day-today {
+            background-color: #F5F3FA !important;
+        }
+        .fc-event-title {
+            white-space: normal !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 # Exibe o calendário com os eventos
 events = st.session_state.get('events', [])
-calendar(events=events, options=calendar_options)
+try:
+    calendar(events=events, options=calendar_options)
+except Exception as e:
+    st.error(f"Erro ao carregar o calendário: {str(e)}")
+    st.info("Por favor, verifique se a biblioteca streamlit-calendar está instalada corretamente")
 
 # Exibe lista de reuniões agendadas
 if events:
@@ -224,7 +284,7 @@ if events:
     # Na seção de exibição de eventos, ajuste os botões:
     if eventos_filtrados:
         for idx, evento in eventos_filtrados:
-            with st.expander(f"{evento['title']} - {evento['start'][:10]}"):
+            with st.expander(f"{evento['title']} - {datetime.fromisoformat(evento['start'][:19]).strftime('%d/%m/%Y %H:%M')}"):
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("Editar", key=f"edit_button_{idx}"):  # Chave única para botão de editar
@@ -238,11 +298,12 @@ if events:
                         st.rerun()
                 
                 with col2:
-                    if st.button("Cancelar Reunião", key=f"cancel_button_{idx}"):  # Chave única para botão de cancelar
-                        events.pop(idx)
-                        salvar_eventos_arquivo()
-                        st.success("Reunião cancelada com sucesso!")
-                        st.rerun()
+                    if st.button("Cancelar Reunião", key=f"cancel_button_{idx}"):
+                        if st.button(f"Confirmar cancelamento de '{evento['title']}'?", key=f"confirm_cancel_{idx}"):
+                            events.pop(idx)
+                            salvar_eventos_arquivo()
+                            st.success("Reunião cancelada com sucesso!")
+                            st.rerun()
                 
                 st.write(evento['description'])
 
