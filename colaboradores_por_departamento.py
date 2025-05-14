@@ -1,6 +1,4 @@
 colaboradores_por_departamento = {
-    'Felipe Martins Buccini': ['FP&A e Orçamento'],
-    'Thiago Alves Moreira': ['FP&A e Orçamento'],
     'Mauro Pereces Macedo': ['CSA - BH'],
     'Douglas Leite': ['CSA - BH'],
     'Julliana Cristina Bertoni': ['Financeiro'],
@@ -37,6 +35,6 @@ colaboradores_por_departamento = {
     'Luciana Alves Faria': ['Tecnologia da Informação'],
     'Mateus Gomes da Silva': ['ILALI'],
     'Jonathan Felix de Souza': ['Pastoralidade'],
-    'Nubia Fantini': ['Relacionamento com o Cliente'],
+    'Nubia Fantini': ['Comunicação e Marketing'],
     'Nubia Paula Las Casas': ['Secretaria']
 }
