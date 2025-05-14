@@ -38,5 +38,5 @@ colaboradores_por_departamento = {
     'Mateus Gomes da Silva': ['ILALI'],
     'Jonathan Felix de Souza': ['Pastoralidade'],
     'Nubia Fantini': ['Relacionamento com o Cliente'],
-    'Nubia Paula Las Casas': ['Secretária']
+    'Nubia Paula Las Casas': ['Secretaria']
 }
