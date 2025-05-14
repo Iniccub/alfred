@@ -4,9 +4,8 @@ from datetime import datetime, timedelta
 from departamentos import departamentos
 from colaboradores_por_departamento import colaboradores_por_departamento
 import banco_eventos
+import os  # Manter apenas os imports necessários
 
-import json
-import os
 
 # Função para carregar eventos
 def carregar_eventos():
@@ -20,7 +19,16 @@ def carregar_eventos():
 def salvar_eventos_arquivo():
     try:
         with open('banco_eventos.py', 'w', encoding='utf-8') as f:
-            f.write(f'eventos_db = {repr(st.session_state.events)}')
+            f.write('eventos_db = [\n')
+            for idx, evento in enumerate(st.session_state.events):
+                # Adiciona 4 espaços de indentação
+                f.write('    ' + repr(evento))
+                # Adiciona vírgula e quebra de linha se não for o último elemento
+                if idx < len(st.session_state.events) - 1:
+                    f.write(',\n')
+                else:
+                    f.write('\n')
+            f.write(']')
     except Exception as e:
         st.error(f"Erro ao salvar eventos: {e}")
 
@@ -30,6 +38,7 @@ def salvar_evento(evento):
         st.session_state.events = []
     st.session_state.events.append(evento)
     salvar_eventos_arquivo()
+    # Removida a linha st.session_state.sync()
 
 # Configuração da página
 st.set_page_config(
@@ -66,10 +75,12 @@ st.markdown(
 )
 
 # Inicializa o estado da sessão para eventos se não existir
+# Remover esta inicialização duplicada
 if 'events' not in st.session_state:
     st.session_state.events = carregar_eventos()
 
 # Substitua a função carregar_eventos
+# Remover todo este bloco comentado
 # def carregar_eventos():
 #     try:
 #         eventos = list(collection.find({}, {'_id': 0}))
@@ -78,10 +89,8 @@ if 'events' not in st.session_state:
 #         st.error(f"Erro ao carregar eventos: {e}")
 #     return []
 
-# Substitua a função salvar_eventos_arquivo
 # def salvar_eventos_arquivo():
 #     try:
-#         # Limpa a coleção e insere todos os eventos
 #         collection.delete_many({})
 #         if st.session_state.events:
 #             collection.insert_many(st.session_state.events)
@@ -89,10 +98,12 @@ if 'events' not in st.session_state:
 #         st.error(f"Erro ao salvar eventos: {e}")
 
 # Inicializa o estado da sessão com eventos do arquivo
+# Manter apenas esta inicialização
 if 'events' not in st.session_state:
     st.session_state.events = carregar_eventos()
 
 # Modifique a função salvar_evento para incluir o salvamento em arquivo
+# Remover esta função duplicada
 def salvar_evento(evento):
     if 'events' not in st.session_state:
         st.session_state.events = []
@@ -235,32 +246,40 @@ if events:
                 
                 st.write(evento['description'])
 
-    # Remove these duplicate button sections
-    # if st.button("Cancelar Reunião", key=f"cancel_{idx}"):  # This was causing the error
-    # if st.button("Salvar Alterações"):  # This should be in the editing modal
-
-    # Modal de edição (if needed)
+    # Modal de edição
     if 'editing_event' in st.session_state:
         st.sidebar.header("Editar Reunião")
-        # Add your editing form here
-        # Atualiza o evento
-        inicio_dt = datetime.combine(nova_data, nova_hora)
-        fim_dt = inicio_dt + timedelta(hours=nova_duracao)
         
-        evento_atualizado = {
-            "title": novo_titulo,
-            "start": inicio_dt.isoformat(),
-            "end": fim_dt.isoformat(),
-            "description": f"Departamento: {novo_dept}\nParticipantes: {novos_participantes}\n\n{nova_descricao}"
-        }
+        # Campos do formulário de edição
+        novo_titulo = st.sidebar.text_input("Título da Reunião", value=st.session_state.edit_title)
+        nova_data = st.sidebar.date_input("Data da Reunião", value=st.session_state.edit_start.date())
+        nova_hora = st.sidebar.time_input("Hora de Início", value=st.session_state.edit_start.time())
+        nova_duracao = st.sidebar.number_input("Duração (horas)", min_value=0.5, max_value=8.0, value=1.0, step=0.5)
+        novo_dept = st.sidebar.text_input("Departamento", value=st.session_state.edit_dept)
+        novos_participantes = st.sidebar.text_input("Participantes", value=st.session_state.edit_participants)
+        nova_descricao = st.sidebar.text_area("Descrição", value=st.session_state.edit_description)
         
-        st.session_state.events[st.session_state.editing_event] = evento_atualizado
-        salvar_eventos_arquivo()  # Adicionar esta linha
-        del st.session_state.editing_event
-        st.success("Reunião atualizada com sucesso!")
-        st.rerun()
+        col1, col2 = st.sidebar.columns(2)
+        with col1:
+            if st.button("Salvar Alterações", key="save_edit"):
+                inicio_dt = datetime.combine(nova_data, nova_hora)
+                fim_dt = inicio_dt + timedelta(hours=nova_duracao)
+                
+                evento_atualizado = {
+                    "title": novo_titulo,
+                    "start": inicio_dt.isoformat(),
+                    "end": fim_dt.isoformat(),
+                    "description": f"Departamento: {novo_dept}\nParticipantes: {novos_participantes}\n\n{nova_descricao}"
+                }
+                
+                st.session_state.events[st.session_state.editing_event] = evento_atualizado
+                salvar_eventos_arquivo()
+                del st.session_state.editing_event
+                st.success("Reunião atualizada com sucesso!")
+                st.rerun()
+        
         with col2:
-            if st.button("Cancelar Edição"):
+            if st.button("Cancelar Edição", key="cancel_edit"):
                 del st.session_state.editing_event
                 st.rerun()
 
