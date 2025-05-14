@@ -250,14 +250,37 @@ if events:
     if 'editing_event' in st.session_state:
         st.sidebar.header("Editar Reunião")
         
-        # Campos do formulário de edição
-        novo_titulo = st.sidebar.text_input("Título da Reunião", value=st.session_state.edit_title)
-        nova_data = st.sidebar.date_input("Data da Reunião", value=st.session_state.edit_start.date())
-        nova_hora = st.sidebar.time_input("Hora de Início", value=st.session_state.edit_start.time())
-        nova_duracao = st.sidebar.number_input("Duração (horas)", min_value=0.5, max_value=8.0, value=1.0, step=0.5)
-        novo_dept = st.sidebar.text_input("Departamento", value=st.session_state.edit_dept)
-        novos_participantes = st.sidebar.text_input("Participantes", value=st.session_state.edit_participants)
-        nova_descricao = st.sidebar.text_area("Descrição", value=st.session_state.edit_description)
+        # Campos do formulário de edição com chaves únicas
+        novo_titulo = st.sidebar.text_input("Título da Reunião", 
+                                      value=st.session_state.edit_title, 
+                                      key=f"edit_title_{st.session_state.editing_event}")
+        
+        nova_data = st.sidebar.date_input("Data da Reunião", 
+                                    value=st.session_state.edit_start.date(), 
+                                    key=f"edit_date_{st.session_state.editing_event}")
+        
+        nova_hora = st.sidebar.time_input("Hora de Início", 
+                                    value=st.session_state.edit_start.time(), 
+                                    key=f"edit_time_{st.session_state.editing_event}")
+        
+        nova_duracao = st.sidebar.number_input("Duração (horas)", 
+                                         min_value=0.5, 
+                                         max_value=8.0, 
+                                         value=float((st.session_state.edit_end - st.session_state.edit_start).total_seconds() / 3600),
+                                         step=0.5,
+                                         key=f"edit_duration_{st.session_state.editing_event}")
+        
+        novo_dept = st.sidebar.text_input("Departamento", 
+                                    value=st.session_state.edit_dept, 
+                                    key=f"edit_dept_{st.session_state.editing_event}")
+        
+        novos_participantes = st.sidebar.text_input("Participantes", 
+                                              value=st.session_state.edit_participants, 
+                                              key=f"edit_participants_{st.session_state.editing_event}")
+        
+        nova_descricao = st.sidebar.text_area("Descrição", 
+                                        value=st.session_state.edit_description, 
+                                        key=f"edit_description_{st.session_state.editing_event}")
         
         col1, col2 = st.sidebar.columns(2)
         with col1:
