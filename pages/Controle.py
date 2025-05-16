@@ -74,15 +74,26 @@ with col3:
 # Linha divisória
 st.divider()
 
+# Adicione o filtro de status antes da listagem dos departamentos
+opcoes_filtro = ["Todos", "Apenas Agendadas", "Apenas Pendentes"]
+filtro_status = st.selectbox("Filtrar departamentos por status", opcoes_filtro)
+
 # Lista os departamentos e seus status
 for dept in departamentos:
+    tem_reuniao = tem_reuniao_agendada(dept, mes_numero)
+    
+    # Aplica o filtro escolhido
+    if filtro_status == "Apenas Agendadas" and not tem_reuniao:
+        continue
+    if filtro_status == "Apenas Pendentes" and tem_reuniao:
+        continue
+
     col1, col2, col3 = st.columns([2, 1, 2])
     
     with col1:
         st.write(dept)
     
     with col2:
-        tem_reuniao = tem_reuniao_agendada(dept, mes_numero)
         if tem_reuniao:
             st.success("✓ Agendada")
         else:
