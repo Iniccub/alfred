@@ -205,7 +205,14 @@ calendar_options = {
     "slotMaxTime": "18:00:00",
     "firstDay": 0,
     "weekends": True,
-    "dayMaxEvents": True
+    "dayMaxEvents": 3,  # Mostra apenas 2 eventos por dia
+    "moreLinkText": "mais eventos",  # Texto do botão em português
+    "moreLinkClick": "popover",  # Abre um popover ao clicar no botão
+    "views": {
+        "dayGrid": {
+            "dayMaxEvents": 2  # Confirma a configuração para a visualização de grade
+        }
+    }
 }
 
 # Adicione estilos CSS personalizados para o calendário
@@ -217,6 +224,7 @@ st.markdown("""
             color: white !important;
             padding: 3px !important;
             border-radius: 3px !important;
+            font-size: 0.6em !important;  /* Reduz o tamanho da fonte dos eventos */
         }
         .fc-event:hover {
             background-color: #5D369C !important;
@@ -239,6 +247,10 @@ st.markdown("""
             white-space: normal !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
+            font-size: 0.6em !important;  /* Reduz o tamanho da fonte dos títulos */
+        }
+        .fc-event-time {
+            font-size: 0.6em !important;  /* Reduz o tamanho da fonte do horário */
         }
     </style>
 """, unsafe_allow_html=True)
@@ -287,7 +299,7 @@ if events:
             with st.expander(f"{evento['title']} - {datetime.fromisoformat(evento['start'][:19]).strftime('%d/%m/%Y %H:%M')}"):
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button("Editar", key=f"edit_button_{idx}"):  # Chave única para botão de editar
+                    if st.button("Editar", key=f"edit_button_{idx}"):
                         st.session_state.editing_event = idx
                         st.session_state.edit_title = evento['title']
                         st.session_state.edit_start = datetime.fromisoformat(evento['start'])
@@ -298,13 +310,24 @@ if events:
                         st.rerun()
                 
                 with col2:
+                    # Modificação na lógica de cancelamento
+                    if 'confirmar_cancelamento' not in st.session_state:
+                        st.session_state.confirmar_cancelamento = {}
+                    
                     if st.button("Cancelar Reunião", key=f"cancel_button_{idx}"):
-                        if st.button(f"Confirmar cancelamento de '{evento['title']}'?", key=f"confirm_cancel_{idx}"):
+                        st.session_state.confirmar_cancelamento[idx] = True
+                    
+                    if st.session_state.confirmar_cancelamento.get(idx, False):
+                        if st.button("Confirmar Cancelamento", key=f"confirm_cancel_{idx}"):
                             events.pop(idx)
                             salvar_eventos_arquivo()
+                            st.session_state.confirmar_cancelamento.pop(idx, None)
                             st.success("Reunião cancelada com sucesso!")
                             st.rerun()
-                
+                        if st.button("Desistir", key=f"desistir_cancel_{idx}"):
+                            st.session_state.confirmar_cancelamento.pop(idx, None)
+                            st.rerun()
+
                 st.write(evento['description'])
 
     # Modal de edição
