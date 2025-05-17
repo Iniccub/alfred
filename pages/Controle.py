@@ -1,6 +1,12 @@
 import streamlit as st
 from datetime import datetime
 from departamentos import departamentos
+import sys
+import os
+
+# Adiciona o diretório pai ao path para importar funções do Alfredo.py
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from Alfredo import carregar_eventos
 
 st.title("Controle de Reuniões por Departamento")
 
@@ -23,6 +29,10 @@ mes_selecionado = st.selectbox(
 
 # Converte nome do mês para número (1-12)
 mes_numero = meses.index(mes_selecionado) + 1
+
+# Inicializa eventos se não estiverem na sessão
+if 'events' not in st.session_state:
+    st.session_state.events = carregar_eventos()
 
 # Função para verificar se há reunião agendada para o departamento no mês
 def tem_reuniao_agendada(departamento, mes):

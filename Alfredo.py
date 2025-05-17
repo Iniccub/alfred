@@ -3,32 +3,71 @@ from streamlit_calendar import calendar
 from datetime import datetime, timedelta
 from departamentos import departamentos
 from colaboradores_por_departamento import colaboradores_por_departamento
-import banco_eventos
-import os  # Manter apenas os imports necessários
+import os
+from pymongo import MongoClient
 
+# Importar as credenciais do MongoDB Atlas
+from mongodb import user, secure_password, string
 
-# Função para carregar eventos
+# Configuração do MongoDB Atlas com segredos do Streamlit
+def get_database():
+    try:
+        # Tentar usar os segredos do Streamlit Cloud primeiro
+        try:
+            user = st.secrets["mongodb"]["username"]
+            password = st.secrets["mongodb"]["password"]
+            cluster_url = st.secrets["mongodb"]["cluster_url"]
+            connection_string = f"mongodb+srv://{user}:{password}@{cluster_url}/?retryWrites=true&w=majority"
+        except:
+            # Fallback para o arquivo local se não estiver no Streamlit Cloud
+            from mongodb import user, secure_password, string
+            connection_string = string.replace('<db_password>', secure_password)
+        
+        # Conectar ao MongoDB Atlas
+        client = MongoClient(connection_string)
+        
+        # Acessar o banco de dados 'alfredo_db'
+        db = client['alfredo_db']
+        
+        # Teste de conexão
+        client.admin.command('ping')
+        return db
+    except Exception as e:
+        st.error(f"Erro ao conectar ao MongoDB Atlas: {e}")
+        return None
+
+# Função para carregar eventos do MongoDB
 def carregar_eventos():
     try:
-        return banco_eventos.eventos_db
+        db = get_database()
+        if db:
+            # Obter a coleção 'eventos' (será criada se não existir)
+            collection = db['eventos']
+            # Buscar todos os eventos, excluindo o campo _id
+            eventos = list(collection.find({}, {'_id': 0}))
+            return eventos
+        else:
+            st.warning("Não foi possível conectar ao banco de dados. Usando dados locais.")
+            # Fallback para o arquivo local se não conseguir conectar ao MongoDB
+            import banco_eventos
+            return banco_eventos.eventos_db
     except Exception as e:
         st.error(f"Erro ao carregar eventos: {e}")
     return []
 
-# Função para salvar eventos
-def salvar_eventos_arquivo():
+# Função para salvar eventos no MongoDB
+def salvar_eventos():
     try:
-        with open('banco_eventos.py', 'w', encoding='utf-8') as f:
-            f.write('eventos_db = [\n')
-            for idx, evento in enumerate(st.session_state.events):
-                # Adiciona 4 espaços de indentação
-                f.write('    ' + repr(evento))
-                # Adiciona vírgula e quebra de linha se não for o último elemento
-                if idx < len(st.session_state.events) - 1:
-                    f.write(',\n')
-                else:
-                    f.write('\n')
-            f.write(']')
+        db = get_database()
+        if db:
+            collection = db['eventos']
+            # Limpar todos os eventos existentes
+            collection.delete_many({})
+            # Inserir os eventos atuais
+            if st.session_state.events:
+                collection.insert_many(st.session_state.events)
+        else:
+            st.warning("Não foi possível conectar ao banco de dados. Alterações não foram salvas.")
     except Exception as e:
         st.error(f"Erro ao salvar eventos: {e}")
 
@@ -37,8 +76,23 @@ def salvar_evento(evento):
     if 'events' not in st.session_state:
         st.session_state.events = []
     st.session_state.events.append(evento)
-    salvar_eventos_arquivo()
-    # Removida a linha st.session_state.sync()
+    salvar_eventos()
+
+# Função para atualizar um evento existente
+def atualizar_evento(idx, evento_atualizado):
+    if 0 <= idx < len(st.session_state.events):
+        st.session_state.events[idx] = evento_atualizado
+        salvar_eventos()
+        return True
+    return False
+
+# Função para excluir um evento
+def excluir_evento(idx):
+    if 0 <= idx < len(st.session_state.events):
+        st.session_state.events.pop(idx)
+        salvar_eventos()
+        return True
+    return False
 
 # Configuração da página
 st.set_page_config(
@@ -74,42 +128,9 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Inicializa o estado da sessão para eventos se não existir
-# Remover esta inicialização duplicada
+# Inicializa o estado da sessão com eventos do MongoDB
 if 'events' not in st.session_state:
     st.session_state.events = carregar_eventos()
-
-# Substitua a função carregar_eventos
-# Remover todo este bloco comentado
-# def carregar_eventos():
-#     try:
-#         eventos = list(collection.find({}, {'_id': 0}))
-#         return eventos
-#     except Exception as e:
-#         st.error(f"Erro ao carregar eventos: {e}")
-#     return []
-
-# def salvar_eventos_arquivo():
-#     try:
-#         collection.delete_many({})
-#         if st.session_state.events:
-#             collection.insert_many(st.session_state.events)
-#     except Exception as e:
-#         st.error(f"Erro ao salvar eventos: {e}")
-
-# Inicializa o estado da sessão com eventos do arquivo
-# Manter apenas esta inicialização
-if 'events' not in st.session_state:
-    st.session_state.events = carregar_eventos()
-
-# Modifique a função salvar_evento para incluir o salvamento em arquivo
-# Remover esta função duplicada
-def salvar_evento(evento):
-    if 'events' not in st.session_state:
-        st.session_state.events = []
-    st.session_state.events.append(evento)
-    salvar_eventos_arquivo()
-    # Removida a linha st.session_state.sync()
 
 # Sidebar para agendamento
 with st.sidebar:
@@ -319,8 +340,7 @@ if events:
                     
                     if st.session_state.confirmar_cancelamento.get(idx, False):
                         if st.button("Confirmar Cancelamento", key=f"confirm_cancel_{idx}"):
-                            events.pop(idx)
-                            salvar_eventos_arquivo()
+                            excluir_evento(idx)
                             st.session_state.confirmar_cancelamento.pop(idx, None)
                             st.success("Reunião cancelada com sucesso!")
                             st.rerun()
@@ -379,8 +399,7 @@ if events:
                     "description": f"Departamento: {novo_dept}\nParticipantes: {novos_participantes}\n\n{nova_descricao}"
                 }
                 
-                st.session_state.events[st.session_state.editing_event] = evento_atualizado
-                salvar_eventos_arquivo()
+                atualizar_evento(st.session_state.editing_event, evento_atualizado)
                 del st.session_state.editing_event
                 st.success("Reunião atualizada com sucesso!")
                 st.rerun()
