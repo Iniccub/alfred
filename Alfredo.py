@@ -6,32 +6,35 @@ from colaboradores_por_departamento import colaboradores_por_departamento
 import os
 from pymongo import MongoClient
 
-# Importar as credenciais do MongoDB Atlas
-from mongodb import user, secure_password, string
+# Remover a importação do mongodb.py
+# from mongodb import user, secure_password, string
 
 # Configuração do MongoDB Atlas com segredos do Streamlit
 def get_database():
     try:
-        # Tentar usar os segredos do Streamlit Cloud primeiro
+        # Tentar usar os segredos do Streamlit Cloud
         try:
             user = st.secrets["mongodb"]["username"]
             password = st.secrets["mongodb"]["password"]
             cluster_url = st.secrets["mongodb"]["cluster_url"]
             connection_string = f"mongodb+srv://{user}:{password}@{cluster_url}/?retryWrites=true&w=majority"
-        except:
-            # Fallback para o arquivo local se não estiver no Streamlit Cloud
-            from mongodb import user, secure_password, string
-            connection_string = string.replace('<db_password>', secure_password)
-        
-        # Conectar ao MongoDB Atlas
-        client = MongoClient(connection_string)
-        
-        # Acessar o banco de dados 'alfredo_db'
-        db = client['alfredo_db']
-        
-        # Teste de conexão
-        client.admin.command('ping')
-        return db
+            
+            # Conectar ao MongoDB Atlas
+            client = MongoClient(connection_string)
+            
+            # Acessar o banco de dados 'alfredo_db'
+            db = client['alfredo_db']
+            
+            # Teste de conexão
+            client.admin.command('ping')
+            return db
+        except Exception as e:
+            st.error(f"Erro ao conectar ao MongoDB Atlas: {e}")
+            
+            # Fallback para o banco de dados local
+            import banco_eventos
+            st.warning("Usando banco de dados local como fallback.")
+            return None
     except Exception as e:
         st.error(f"Erro ao conectar ao MongoDB Atlas: {e}")
         return None
