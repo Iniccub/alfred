@@ -40,10 +40,21 @@ def tem_reuniao_agendada(departamento, mes):
         return False
         
     for evento in st.session_state.events:
-        data_evento = datetime.fromisoformat(evento['start'].replace('Z', '+00:00'))
-        if (data_evento.month == mes and 
-            f"Departamento: {departamento}" in evento['description']):
-            return True
+        # Tratamento para diferentes formatos de data
+        try:
+            # Tenta converter a data do evento para objeto datetime
+            if 'Z' in evento['start']:
+                data_evento = datetime.fromisoformat(evento['start'].replace('Z', '+00:00'))
+            else:
+                data_evento = datetime.fromisoformat(evento['start'])
+                
+            # Verifica se o evento é do departamento e mês corretos
+            if (data_evento.month == mes and 
+                f"Departamento: {departamento}" in evento['description']):
+                return True
+        except (ValueError, KeyError) as e:
+            st.error(f"Erro ao processar evento: {e}")
+            continue
     return False
 
 # Calcula o percentual de reuniões agendadas
