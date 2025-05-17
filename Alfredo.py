@@ -18,25 +18,27 @@ def get_database():
             password = st.secrets["mongodb"]["password"]
             cluster_url = st.secrets["mongodb"]["cluster_url"]
             connection_string = f"mongodb+srv://{user}:{password}@{cluster_url}/?retryWrites=true&w=majority"
+        except Exception:
+            # Fallback para credenciais locais se não encontrar no Streamlit Cloud
+            from mongodb import user, secure_password, string
+            connection_string = string.replace('<db_password>', secure_password)
             
-            # Conectar ao MongoDB Atlas
-            client = MongoClient(connection_string)
-            
-            # Acessar o banco de dados 'alfredo_db'
-            db = client['alfredo_db']
-            
-            # Teste de conexão
-            client.admin.command('ping')
-            return db
-        except Exception as e:
-            st.error(f"Erro ao conectar ao MongoDB Atlas: {e}")
-            
-            # Fallback para o banco de dados local
-            import banco_eventos
-            st.warning("Usando banco de dados local como fallback.")
-            return None
+        # Conectar ao MongoDB Atlas
+        client = MongoClient(connection_string)
+        
+        # Acessar o banco de dados 'alfredo_db'
+        db = client['alfredo_db']
+        
+        # Teste de conexão
+        client.admin.command('ping')
+        st.success("Conectado ao MongoDB Atlas com sucesso!")
+        return db
     except Exception as e:
         st.error(f"Erro ao conectar ao MongoDB Atlas: {e}")
+        
+        # Fallback para o banco de dados local
+        import banco_eventos
+        st.warning("Usando banco de dados local como fallback.")
         return None
 
 # Função para carregar eventos do MongoDB
