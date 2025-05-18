@@ -18,26 +18,36 @@ def get_database():
             password = st.secrets["mongodb"]["password"]
             cluster_url = st.secrets["mongodb"]["cluster_url"]
             connection_string = f"mongodb+srv://{user}:{password}@{cluster_url}/?retryWrites=true&w=majority"
-        except Exception:
-            # Fallback para credenciais locais se não encontrar no Streamlit Cloud
+            
+            # Conectar ao MongoDB Atlas
+            client = MongoClient(connection_string, serverSelectionTimeoutMS=5000)
+            
+            # Teste de conexão com timeout
+            client.admin.command('ping')
+            st.success("Conectado ao MongoDB Atlas com sucesso!")
+            
+            # Acessar o banco de dados 'alfredo_db'
+            return client['alfredo_db']
+            
+        except Exception as e:
+            st.warning(f"Não foi possível conectar usando segredos do Streamlit: {e}")
+            
+            # Fallback para credenciais locais
             from mongodb import user, secure_password, string
             connection_string = string.replace('<db_password>', secure_password)
             
-        # Conectar ao MongoDB Atlas
-        client = MongoClient(connection_string)
-        
-        # Acessar o banco de dados 'alfredo_db'
-        db = client['alfredo_db']
-        
-        # Teste de conexão
-        client.admin.command('ping')
-        st.success("Conectado ao MongoDB Atlas com sucesso!")
-        return db
+            # Conectar ao MongoDB Atlas com credenciais locais
+            client = MongoClient(connection_string, serverSelectionTimeoutMS=5000)
+            
+            # Teste de conexão com timeout
+            client.admin.command('ping')
+            st.success("Conectado ao MongoDB Atlas com credenciais locais!")
+            
+            # Acessar o banco de dados 'alfredo_db'
+            return client['alfredo_db']
+            
     except Exception as e:
         st.error(f"Erro ao conectar ao MongoDB Atlas: {e}")
-        
-        # Fallback para o banco de dados local
-        import banco_eventos
         st.warning("Usando banco de dados local como fallback.")
         return None
 
@@ -50,15 +60,23 @@ def carregar_eventos():
             collection = db['eventos']
             # Buscar todos os eventos, excluindo o campo _id
             eventos = list(collection.find({}, {'_id': 0}))
-            return eventos
+            if eventos:
+                st.success(f"Carregados {len(eventos)} eventos do MongoDB com sucesso!")
+                return eventos
+            else:
+                st.warning("Nenhum evento encontrado no MongoDB. Usando dados locais.")
+                import banco_eventos
+                return banco_eventos.eventos_db
         else:
-            st.warning("Não foi possível conectar ao banco de dados. Usando dados locais.")
             # Fallback para o arquivo local se não conseguir conectar ao MongoDB
             import banco_eventos
+            st.warning("Usando banco de dados local como fallback.")
             return banco_eventos.eventos_db
     except Exception as e:
         st.error(f"Erro ao carregar eventos: {e}")
-    return []
+        # Garantir que sempre retorne uma lista, mesmo em caso de erro
+        import banco_eventos
+        return banco_eventos.eventos_db
 
 # Função para salvar eventos no MongoDB
 def salvar_eventos():
