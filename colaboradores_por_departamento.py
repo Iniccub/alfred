@@ -25,7 +25,7 @@ colaboradores_por_departamento = {
     'Ricardo Augusto Loureiro': ['Coordenação de Manutenção'],
     'Michelle Ribeiro Neves': ['AIACOM'],
     'Ana Rita Duarte de Faria': ['Comunicação e Marketing', 'Relacionamento com o Cliente'],
-    'Edna Claudia Nascimento': ['ADEODATO'],
+    'Edna Claudia Nascimento': ['Adeodato'],
     'Aline Marian Duarte': ['Comunicação e Marketing'],
     'William Fernando Dias': ['Administrativo'],
     'Pablo Ronam João': ['CSA - CTG'],
@@ -40,5 +40,5 @@ colaboradores_por_departamento = {
     'Eliana Dalcim': ['ESA'],
     'Carina Pugliali de Lima': ['ESA'],
     'Aleluia Heringer': ['EPSA'],
-    'Edna de Souza Freitas': ['ADEODATO']
+    'Edna de Souza Freitas': ['Adeodato']
 }
