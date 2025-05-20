@@ -39,5 +39,6 @@ colaboradores_por_departamento = {
     'Nubia Paula Las Casas': ['Secretaria'],
     'Eliana Dalcim': ['ESA'],
     'Carina Pugliali de Lima': ['ESA'],
-    'Aleluia Heringer': ['EPSA']
+    'Aleluia Heringer': ['EPSA'],
+    'Edna de Souza Freitas': ['ADEODATO']
 }
