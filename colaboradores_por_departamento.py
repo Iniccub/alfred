@@ -36,5 +36,8 @@ colaboradores_por_departamento = {
     'Mateus Gomes da Silva': ['ILALI'],
     'Jonathan Felix de Souza': ['Pastoralidade'],
     'Nubia Fantini': ['Comunicação e Marketing'],
-    'Nubia Paula Las Casas': ['Secretaria']
+    'Nubia Paula Las Casas': ['Secretaria'],
+    'Eliana Dalcim': ['ESA'],
+    'Carina Pugliali de Lima': ['ESA'],
+    'Aleluia Heringer': ['EPSA']
 }
