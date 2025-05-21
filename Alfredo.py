@@ -30,36 +30,56 @@ def get_database():
             return client['alfredo_db']
             
         except Exception as e:
-            st.warning(f"Não foi possível conectar usando segredos do Streamlit: {e}")
+            st.warning(f"Não foi possível conectar usando segredos do Streamlit: {str(e)}")
             
             # Fallback para credenciais locais
-            from mongodb import user, secure_password, string
-            connection_string = string.replace('<db_password>', secure_password)
-            
-            # Conectar ao MongoDB Atlas com credenciais locais
-            client = MongoClient(connection_string, serverSelectionTimeoutMS=5000)
-            
-            # Teste de conexão com timeout
-            client.admin.command('ping')
-            st.success("Conectado ao MongoDB Atlas com credenciais locais!")
-            
-            # Acessar o banco de dados 'alfredo_db'
-            return client['alfredo_db']
+            try:
+                from mongodb import user, secure_password, string
+                connection_string = string.replace('<db_password>', secure_password)
+                
+                # Conectar ao MongoDB Atlas com credenciais locais
+                client = MongoClient(connection_string, serverSelectionTimeoutMS=5000)
+                
+                # Teste de conexão com timeout
+                client.admin.command('ping')
+                st.success("Conectado ao MongoDB Atlas com credenciais locais!")
+                
+                # Acessar o banco de dados 'alfredo_db'
+                return client['alfredo_db']
+            except Exception as local_error:
+                st.error(f"Erro ao conectar com credenciais locais: {str(local_error)}")
+                return None
             
     except Exception as e:
-        st.error(f"Erro ao conectar ao MongoDB Atlas: {e}")
+        st.error(f"Erro ao conectar ao MongoDB Atlas: {str(e)}")
         st.warning("Usando banco de dados local como fallback.")
         return None
 
 # Função para carregar eventos do MongoDB
+# Função para carregar eventos do MongoDB
 def carregar_eventos():
     try:
         db = get_database()
-        if db:
+        if db is not None:  # Corrigido: usar 'is not None' em vez de 'if db'
             # Obter a coleção 'eventos' (será criada se não existir)
             collection = db['eventos']
+            
             # Buscar todos os eventos, excluindo o campo _id
-            eventos = list(collection.find({}, {'_id': 0}))
+            eventos_cursor = collection.find({}, {'_id': 0})
+            
+            # Converter para lista e garantir que todos os dados sejam serializáveis
+            eventos = []
+            for evento in eventos_cursor:
+                # Converter qualquer ObjectId para string
+                evento_serializable = {}
+                for chave, valor in evento.items():
+                    from bson import ObjectId
+                    if isinstance(valor, ObjectId):
+                        evento_serializable[chave] = str(valor)
+                    else:
+                        evento_serializable[chave] = valor
+                eventos.append(evento_serializable)
+            
             if eventos:
                 st.success(f"Carregados {len(eventos)} eventos do MongoDB com sucesso!")
                 return eventos
@@ -79,20 +99,57 @@ def carregar_eventos():
         return banco_eventos.eventos_db
 
 # Função para salvar eventos no MongoDB
+# Função para salvar eventos no MongoDB
 def salvar_eventos():
     try:
         db = get_database()
-        if db:
+        if db is not None:  # Corrigido: usar 'is not None' em vez de 'if db'
             collection = db['eventos']
             # Limpar todos os eventos existentes
             collection.delete_many({})
+            
+            # Garantir que todos os eventos sejam serializáveis
+            eventos_serializaveis = []
+            for evento in st.session_state.events:
+                # Converter qualquer ObjectId para string
+                evento_serializable = {}
+                for chave, valor in evento.items():
+                    from bson import ObjectId
+                    if isinstance(valor, ObjectId):
+                        evento_serializable[chave] = str(valor)
+                    else:
+                        evento_serializable[chave] = valor
+                eventos_serializaveis.append(evento_serializable)
+            
             # Inserir os eventos atuais
-            if st.session_state.events:
-                collection.insert_many(st.session_state.events)
+            if eventos_serializaveis:
+                result = collection.insert_many(eventos_serializaveis)
+                st.success(f"Eventos salvos com sucesso! {len(result.inserted_ids)} eventos gravados no MongoDB.")
+            else:
+                st.warning("Nenhum evento para salvar.")
         else:
-            st.warning("Não foi possível conectar ao banco de dados. Alterações não foram salvas.")
+            st.error("Não foi possível conectar ao banco de dados. Alterações não foram salvas.")
+            # Tenta fazer um backup local como fallback
+            try:
+                import json
+                import os
+                from datetime import datetime
+                
+                backup_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backups')
+                os.makedirs(backup_dir, exist_ok=True)
+                
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                backup_file = os.path.join(backup_dir, f"backup_local_{timestamp}.json")
+                
+                with open(backup_file, 'w', encoding='utf-8') as f:
+                    json.dump(st.session_state.events, f, ensure_ascii=False, indent=4)
+                
+                st.info(f"Backup local criado em {backup_file}")
+            except Exception as backup_error:
+                st.error(f"Erro ao criar backup local: {backup_error}")
     except Exception as e:
-        st.error(f"Erro ao salvar eventos: {e}")
+        st.error(f"Erro ao salvar eventos: {str(e)}")
+        st.exception(e)  # Mostra o traceback completo do erro
 
 # Função para salvar evento individual
 def salvar_evento(evento):
@@ -141,17 +198,17 @@ with st.sidebar:
 st.markdown(
     """
     <style>
-        [data-testid="stSidebar"] [data-testid="stImage"] {
-            display: block;
-            margin-left: 40px;
-            margin-right: auto;
-        }
+    [data-testid="stSidebar"] [data-testid="stImage"] {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# Inicializa o estado da sessão com eventos do MongoDB
+# Inicializar o estado da sessão com eventos do MongoDB
 if 'events' not in st.session_state:
     st.session_state.events = carregar_eventos()
 
@@ -479,3 +536,22 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+# ...
+
+# Adicione este código na sidebar ou em outra parte da interface
+with st.sidebar:
+    st.divider()
+    st.subheader("Ferramentas de Diagnóstico")
+    if st.button("Testar Conexão com MongoDB"):
+        db = get_database()
+        if db:
+            try:
+                # Tenta fazer uma operação simples
+                collection = db['eventos']
+                count = collection.count_documents({})
+                st.success(f"Conexão bem-sucedida! Existem {count} eventos no banco de dados.")
+            except Exception as e:
+                st.error(f"Erro ao acessar a coleção: {str(e)}")
+        else:
+            st.error("Não foi possível estabelecer conexão com o MongoDB.")
