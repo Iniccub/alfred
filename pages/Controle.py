@@ -94,7 +94,7 @@ fig.update_layout(
     xaxis_title='Mês',
     yaxis_title='Percentual de Departamentos (%)',
     yaxis=dict(range=[0, 100],
-    showticklabels=False),
+    showticklabels=True),
     height=400
 )
 st.plotly_chart(fig, use_container_width=True)
