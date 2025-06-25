@@ -87,8 +87,7 @@ fig = px.line(
 # Adicionar rótulos de dados e ocultar a coluna de percentual
 fig.update_traces(
     texttemplate='%{y:.1f}%',  # Formato do rótulo com 1 casa decimal e símbolo de percentual
-    textposition='top center',
-    showticklabels=True   # Posição do rótulo acima do ponto
+    textposition='top center'   # Posição do rótulo acima do ponto
 )
 
 fig.update_layout(
