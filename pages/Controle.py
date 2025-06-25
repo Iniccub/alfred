@@ -3,12 +3,93 @@ from datetime import datetime
 from departamentos import departamentos
 import sys
 import os
+import pandas as pd
+import plotly.express as px
 
 # Adiciona o diretório pai ao path para importar funções do Alfredo.py
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from Alfredo import carregar_eventos
 
 st.title("Controle de Reuniões por Departamento")
+
+# Função para calcular o percentual de agendamentos por mês
+def calcular_percentual_mensal():
+    # Carregar eventos se não estiverem na sessão
+    if 'events' not in st.session_state:
+        st.session_state.events = carregar_eventos()
+    
+    # Inicializar dicionário para contar reuniões por mês
+    meses_dict = {
+        1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril", 
+        5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto", 
+        9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
+    }
+    
+    # Inicializar contadores
+    total_departamentos = len(departamentos)
+    reunioes_por_mes = {mes: 0 for mes in range(1, 13)}
+    
+    # Ano atual
+    ano_atual = datetime.now().year
+    
+    # Contar reuniões por mês para cada departamento
+    for dept in departamentos:
+        for mes in range(1, 13):
+            if tem_reuniao_agendada_por_mes(dept, mes, ano_atual):
+                reunioes_por_mes[mes] += 1
+    
+    # Calcular percentuais
+    percentuais = {}
+    for mes, count in reunioes_por_mes.items():
+        percentuais[mes] = (count / total_departamentos) * 100 if total_departamentos > 0 else 0
+    
+    # Criar DataFrame para o gráfico
+    df = pd.DataFrame({
+        'Mês': [meses_dict[mes] for mes in range(1, 13)],
+        'Percentual': [percentuais[mes] for mes in range(1, 13)]
+    })
+    
+    return df
+
+# Função para verificar se há reunião agendada para o departamento em um mês específico do ano especificado
+def tem_reuniao_agendada_por_mes(departamento, mes, ano):
+    if 'events' not in st.session_state:
+        return False
+        
+    for evento in st.session_state.events:
+        # Tratamento para diferentes formatos de data
+        try:
+            # Tenta converter a data do evento para objeto datetime
+            if 'Z' in evento['start']:
+                data_evento = datetime.fromisoformat(evento['start'].replace('Z', '+00:00'))
+            else:
+                data_evento = datetime.fromisoformat(evento['start'])
+                
+            # Verifica se o evento é do departamento, mês e ano corretos
+            if (data_evento.month == mes and 
+                data_evento.year == ano and
+                f"Departamento: {departamento}" in evento['description']):
+                return True
+        except (ValueError, KeyError) as e:
+            continue
+    return False
+
+# Criar e exibir o gráfico de evolução mensal
+df_percentuais = calcular_percentual_mensal()
+fig = px.line(
+    df_percentuais, 
+    x='Mês', 
+    y='Percentual',
+    title=f'Evolução do Percentual de Agendamentos por Mês ({datetime.now().year})',
+    markers=True
+)
+fig.update_layout(
+    xaxis_title='Mês',
+    yaxis_title='Percentual de Departamentos (%)',
+    yaxis=dict(range=[0, 100]),
+    height=400
+)
+st.plotly_chart(fig, use_container_width=True)
 
 # Filtro de mês
 meses = [
