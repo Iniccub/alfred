@@ -83,10 +83,18 @@ fig = px.line(
     title=f'Evolução do Percentual de Agendamentos por Mês ({datetime.now().year})',
     markers=True
 )
+
+# Adicionar rótulos de dados e ocultar a coluna de percentual
+fig.update_traces(
+    texttemplate='%{y:.1f}%',  # Formato do rótulo com 1 casa decimal e símbolo de percentual
+    textposition='top center'   # Posição do rótulo acima do ponto
+)
+
 fig.update_layout(
     xaxis_title='Mês',
     yaxis_title='Percentual de Departamentos (%)',
-    yaxis=dict(range=[0, 100]),
+    yaxis=dict(range=[0, 100],
+    showticklabels=False),
     height=400
 )
 st.plotly_chart(fig, use_container_width=True)
