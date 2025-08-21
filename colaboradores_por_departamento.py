@@ -25,7 +25,7 @@ colaboradores_por_departamento = {
     'Ricardo Augusto Loureiro': ['Coordenação de Manutenção'],
     'Michelle Ribeiro Neves': ['AIACOM'],
     'Ana Rita Duarte de Faria': ['Comunicação e Marketing', 'Relacionamento com o Cliente'],
-    'Edna Claudia Nascimento': ['Adeodato'],
+    'Edna Claudia Nascimento': ['ADEODATO'],
     'Aline Marian Duarte': ['Comunicação e Marketing'],
     'William Fernando Dias': ['Administrativo'],
     'Pablo Ronam João': ['CSA - CTG'],
@@ -37,8 +37,13 @@ colaboradores_por_departamento = {
     'Jonathan Felix de Souza': ['Pastoralidade'],
     'Nubia Fantini': ['Comunicação e Marketing'],
     'Nubia Paula Las Casas': ['Secretaria'],
-    'Eliana Dalcim': ['ESA'],
-    'Carina Pugliali de Lima': ['ESA'],
-    'Aleluia Heringer': ['EPSA'],
-    'Edna de Souza Freitas': ['Adeodato']
+    'Clovis Oliveira': ['CSA - BH'],
+    'Marco Henrique': ['CSA - GZ'],
+    'Ana Paula': ['CSA - DV'],
+    'Paulo Negreiros': ['CSA - NL'],
+    'Aparecida Debona': ['CSA - CTG'],
+    'Renata Junqueira': ['CSA - BH'],
+    'Mariana Esser': ['CSA - NL'],
+    'Fernanda Diniz': ['CSA - GZ'],
+    'Adriana Cassemira': ['CSA - CTG']
 }
